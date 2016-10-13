@@ -1,5 +1,15 @@
+/**
+ * ai.jsx cs4+ (c)MaratShagiev m_js@bk.ru
+ *
+ * pdfToArtbs v0.3
+ *
+ * Open multipage PDF as artboards
+ * Scale and Rotate
+ * Control of the location of objects in the work area
+ * */
 //@target illustrator-14
-(function processArtbs () {
+
+(function main () {
 
   setMaxZero ();
 
@@ -73,7 +83,7 @@
   /**LIB*/
   function setMaxZero () {
     var d               = activeDocument,
-        rect            = d.pathItems.rectangle (0, 0, 16000, 16000),
+        rect            = d.pathItems.rectangle (0, 0, 16383, 16383),
         artbMax,
         screenModeStore = d.views[0].screenMode;
 
