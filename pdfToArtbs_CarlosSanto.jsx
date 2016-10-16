@@ -1,8 +1,10 @@
 /**
- * ai.jsx (c)MaratShagiev m_js@bk.ru 13.10.2016
+ * script.parent = CarlosCanto // 01/07/12;  v1.2-01/15/12
+ * Lion fix by John Hawkinson 01/15/12
+ * modify by (c)MaratShagiev m_js@bk.ru 13.10.2016
  */
 
-//@target illustrator-14
+//@target illustrator
 
 (function main () {
   /**
@@ -13,7 +15,7 @@
   var fileGroup = win.add ("group");
 
   var btnFile  = fileGroup.add ("button", undefined, "File...");
-  var lblFonts = fileGroup.add ("statictext", undefined, "Unavailable\nFonts\nwill be\nsubstituted.", {multiline: true}); //
+  var lblFonts = fileGroup.add ("statictext", undefined, "Unavailable\nFonts\nwill be\nsubstituted.", {multiline: true});
 
   var grpRight = win.add ("group");
   var txtFile  = grpRight.add ("edittext", undefined);
@@ -62,8 +64,8 @@
   }
 
   btnOk.onClick = function () {
-    convertPdfToArtbs ();
     win.close ();
+    convertPdfToArtbs ();
   }
 
   txtFile.onDeactivate = function () {
@@ -81,103 +83,147 @@
    *** UI END ***
    * */
 
+
+
   function convertPdfToArtbs () {
-    var pdfLeft, pdfTop, firstArtbRect, artbRect, i, j, pageSpecs, newItem;
-
     $.hiresTimer;
-    var from = txtFrom.text;
-    var to   = txtTo.text;
-
     app.userInteractionLevel = UserInteractionLevel.DONTDISPLAYALERTS;
-    var fileRef              = File (txtFile.text);
 
-    var idoc = app.documents.add ();
+    var WORK_AREA_SIZE = 16383, // 8494
+        spacing        = 10,
+        arrPagesInfo   = [],
+        from           = txtFrom.text,
+        to             = txtTo.text,
+        fileRef        = File (txtFile.text),
+        iDoc           = app.documents.add (),
+        i, j,
+        pdfDoc, pdfLeft, pdfLay, pdfTop, pdfW, pdfH,
+        firstAbRect, abRect, newAb, actAb, abLeft, abTop, abRight, abBott,
+        items, newItem,
+        iGr, tmpGr,
+        iLay, newLay,
+        deltaX, deltaY,
+        pageSpecs, time;
 
-    setMaxZero ();
+    _setMaxZero ();
 
     var pdfOptions          = app.preferences.PDFFileOptions;
     pdfOptions.pDFCropToBox = PDFBoxType.PDFBOUNDINGBOX;
 
-    var spacing      = 10;
-    var arrPagesInfo = [];
-
     for (j = from; j <= to; j++) {
       pdfOptions.pageToOpen = j;
 
-      var pdfDoc     = open (fileRef, DocumentColorSpace.RGB);
-      lblStatus.text = "\u00A9 2012 Carlos Canto - Opening page " + j;
-      win.update ();
-      var pdfLayer = pdfDoc.activeLayer;
+      pdfDoc         = open (fileRef, DocumentColorSpace.RGB);
+      // lblStatus.text = "\u00A9 2012 Carlos Canto - Opening page " + j;
+      // win.update ();
+      pdfLay = pdfDoc.activeLayer;
 
-      var items    = pdfLayer.pageItems;
-      var tempGrp  = pdfDoc.groupItems.add ();
-      tempGrp.name = "Page " + j;
+      items      = pdfLay.pageItems;
+      tmpGr      = pdfDoc.groupItems.add ();
+      tmpGr.name = "Page " + j;
 
       for (i = items.length - 1; i > 0; i--) {
-        items[i].move (tempGrp, ElementPlacement.PLACEATBEGINNING);
+        items[i].move (tmpGr, ElementPlacement.PLACEATBEGINNING);
       }
 
-      var pdfw     = pdfDoc.width;
-      var pdfh     = pdfDoc.height;
-      var activeAB = pdfDoc.artboards[0];
+      pdfW  = pdfDoc.width;
+      pdfH  = pdfDoc.height;
+      actAb = pdfDoc.artboards[0];
 
-      pdfLeft = activeAB.artboardRect[0];
-      pdfTop  = activeAB.artboardRect[1];
+      pdfLeft = actAb.artboardRect[0];
+      pdfTop  = actAb.artboardRect[1];
 
       if (j == from) {
-        firstArtbRect = activeAB.artboardRect;
-        artbRect      = firstArtbRect;
-
+        abLeft      = 0;
+        abTop       = 0;
+        abRight     = abLeft + pdfW;
+        abBott      = abTop - pdfH;
+        firstAbRect = [abLeft, abTop, abRight, abBott];
+        abRect      = firstAbRect;
       } else {
-
-        if ((artbRect[2] + spacing + pdfw) >= 8494) {
-          var ableft    = firstArtbRect[0];
-          var abtop     = firstArtbRect[3] - spacing;
-          var abright   = ableft + pdfw;
-          var abbottom  = abtop - pdfh;
-          firstArtbRect = [ableft, abtop, abright, abbottom];
+        if ((abRect[2] + spacing + pdfW) >= WORK_AREA_SIZE) {
+          abLeft      = firstAbRect[0];
+          abTop       = firstAbRect[3] - spacing;
+          abRight     = abLeft + pdfW;
+          abBott      = abTop - pdfH;
+          firstAbRect = [abLeft, abTop, abRight, abBott];
         } else {
-          var ableft   = pageSpecs[3][2] + spacing;
-          var abtop    = pageSpecs[3][1];
-          var abright  = ableft + pdfw;
-          var abbottom = abtop - pdfh;
+          abLeft  = pageSpecs[3][2] + spacing;
+          abTop   = pageSpecs[3][1];
+          abRight = abLeft + pdfW;
+          abBott  = abTop - pdfH;
         }
-        artbRect = [ableft, abtop, abright, abbottom];
+        abRect = [abLeft, abTop, abRight, abBott];
       }
 
-      var deltaX = tempGrp.left - pdfLeft;
-      var deltaY = pdfTop - tempGrp.top;
+      deltaX = tmpGr.left - pdfLeft;
+      deltaY = pdfTop - tmpGr.top;
 
-      pageSpecs = [tempGrp.name, deltaX, deltaY, artbRect];
+      pageSpecs = [tmpGr.name, deltaX, deltaY, abRect];
       arrPagesInfo.unshift (pageSpecs);
 
-      newItem = tempGrp.duplicate (idoc, ElementPlacement.PLACEATBEGINNING);
+      newItem = tmpGr.duplicate (iDoc, ElementPlacement.PLACEATBEGINNING);
 
       pdfDoc.close (SaveOptions.DONOTSAVECHANGES);
     }
 
-    var ilayer = idoc.layers[idoc.layers.length - 1];
+    iLay = iDoc.layers[iDoc.layers.length - 1];
+
     for (k = arrPagesInfo.length - 1; k >= 0; k--) {
 
-      var newAB     = idoc.artboards.add (arrPagesInfo[k][3]);
-      var newLayer  = idoc.layers.add ();
-      newLayer.name = arrPagesInfo[k][0]
+      newAb       = iDoc.artboards.add (arrPagesInfo[k][3]);
+      newLay      = iDoc.layers.add ();
+      newLay.name = arrPagesInfo[k][0]
 
-      var igroup = ilayer.groupItems[k];
+      iGr = iLay.groupItems[k];
 
-      igroup.left = newAB.artboardRect[0] + arrPagesInfo[k][1];
-      igroup.top  = newAB.artboardRect[1] - arrPagesInfo[k][2];
-      igroup.move (newLayer, ElementPlacement.PLACEATEND);
+      iGr.left = newAb.artboardRect[0] + arrPagesInfo[k][1];
+      iGr.top  = newAb.artboardRect[1] - arrPagesInfo[k][2];
+      iGr.move (newLay, ElementPlacement.PLACEATEND);
 
-      lblStatus.text = "Repositioning page " + k;
-      win.update ();
+      // lblStatus.text = "Repositioning page " + k;
+      // win.update ();
     }
-    idoc.artboards[0].remove ();
-    ilayer.remove ();
+    iDoc.artboards[0].remove ();
+    iLay.remove ();
 
     app.userInteractionLevel = UserInteractionLevel.DISPLAYALERTS;
-    var time                 = $.hiresTimer / 1000000;
-    lblStatus.text           = "Copyright 2012 \u00A9 Carlos Canto";
+    // time                     = $.hiresTimer / 1000000;
+    // lblStatus.text           = "Copyright 2012 \u00A9 Carlos Canto";
     // alert (arrPagesInfo.length + " pages opened in " + time.toFixed (2) + " seconds");
+
+    /**
+     * set the zero point of global rulers to top left corner of main work area
+     *
+     * used copy-past max-size-rectangle (16383*16383 pt)
+     * and the Document.view property
+     * */
+    function _setMaxZero () {
+      var WORK_AREA_SIZE  = 16383,
+          d               = activeDocument,
+          rect            = d.pathItems.rectangle (0, 0, WORK_AREA_SIZE, WORK_AREA_SIZE),
+          artbMax,
+          screenModeStore = d.views[0].screenMode;
+
+      rect.stroked  = false;
+      rect.selected = true;
+
+      cut ();
+      d.views[0].screenMode = ScreenMode.FULLSCREEN;
+      d.views[0].zoom       = 64;
+      d.views[0].zoom       = 0.0313;
+      paste ();
+      rect    = selection[0];
+      artbMax = d.artboards.add (rect.geometricBounds);
+
+      d.rulerOrigin                                                  = [0, d.height];
+      d.artboards[d.artboards.getActiveArtboardIndex ()].rulerOrigin = [0, 0];
+
+      rect.remove ();
+      artbMax.remove ();
+
+      d.views[0].screenMode = screenModeStore;
+    }
   }
+
 } ());
